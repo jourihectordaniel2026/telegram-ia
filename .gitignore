@@ -1,0 +1,21 @@
+# Secretos / credenciales (¡nunca subir!)
+.env
+.env.*
+!.env.example
+
+# Dependencias
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Build / salida
+dist/
+build/
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

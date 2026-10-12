@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asistente de Presupuestos</title>
+<style>
+:root {
+  --bg: #0e1726;
+  --bg-2: #15223a;
+  --card: #1b2b47;
+  --line: #2c4268;
+  --text: #e9eef7;
+  --muted: #9fb0cc;
+  --amber: #f5b942;
+  --teal: #3ecfb2;
+  --rose: #f2738c;
+  --sky: #6cb6ff;
+  --code-bg: #0a1220;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: #070c15;
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+}
+
+/* Escenario fijo de 1280x720 que se escala al tamaño de la ventana */
+#viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+#stage { width: 1280px; height: 720px; position: relative; transform-origin: center center; }
+
+.slide {
+  position: absolute; inset: 0;
+  padding: 64px 80px 72px;
+  background:
+    radial-gradient(1100px 500px at 100% 0%, rgba(62, 207, 178, .08), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(245, 185, 66, .07), transparent 60%),
+    var(--bg);
+  border-radius: 6px;
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transform: translateX(40px);
+  transition: opacity .45s ease, transform .45s ease;
+}
+.slide.active { opacity: 1; pointer-events: auto; transform: none; }
+.slide.prev { transform: translateX(-40px); }
+
+.kicker {
+  font-size: 15px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--amber); margin-bottom: 10px;
+}
+h1 { font-size: 64px; line-height: 1.05; font-weight: 800; letter-spacing: -.02em; }
+h2 { font-size: 42px; line-height: 1.1; font-weight: 750; letter-spacing: -.01em; margin-bottom: 28px; }
+h3 { font-size: 21px; font-weight: 700; margin-bottom: 8px; }
+p, li { font-size: 21px; line-height: 1.45; color: var(--muted); }
+strong { color: var(--text); }
+.lead { font-size: 26px; color: var(--muted); max-width: 900px; }
+code, .mono { font-family: var(--mono); }
+p code, li code, td code {
+  font-size: .85em; background: rgba(108, 182, 255, .12); color: var(--sky);
+  padding: 1px 7px; border-radius: 5px;
+}
+.amber { color: var(--amber); } .teal { color: var(--teal); } .rose { color: var(--rose); } .sky { color: var(--sky); }
+
+.grid { display: grid; gap: 20px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 20px 22px;
+}
+.card p, .card li { font-size: 17px; }
+.card ul { padding-left: 20px; }
+.card .tag {
+  display: inline-block; font-family: var(--mono); font-size: 13px; color: var(--bg);
+  background: var(--teal); padding: 2px 8px; border-radius: 4px; margin-bottom: 10px; font-weight: 700;
+}
+.behave .card { padding: 11px 18px; }
+.behave .card p { font-size: 16.5px; }
+.card.accent-amber { border-top: 4px solid var(--amber); }
+.card.accent-teal { border-top: 4px solid var(--teal); }
+.card.accent-rose { border-top: 4px solid var(--rose); }
+.card.accent-sky { border-top: 4px solid var(--sky); }
+.icon { font-size: 30px; margin-bottom: 8px; display: block; }
+
+pre {
+  background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px 22px; font-family: var(--mono); font-size: 15.5px; line-height: 1.55;
+  color: #cdd8ea; overflow: hidden; white-space: pre;
+}
+pre .k { color: #ff9ac1; } pre .s { color: #a5e3a0; } pre .c { color: #6f84a6; font-style: italic; }
+pre .f { color: var(--sky); } pre .n { color: var(--amber); }
+
+/* Fragmentos: aparecen de a uno al avanzar */
+.frag { opacity: 0; transform: translateY(12px); transition: opacity .35s ease, transform .35s ease; }
+.frag.shown { opacity: 1; transform: none; }
+.sin-animacion .slide, .sin-animacion .frag { transition: none; }
+
+/* Portada */
+.cover { justify-content: center; }
+.cover h1 { font-size: 78px; max-width: 760px; }
+.cover .lead { max-width: 700px; }
+.cover .lead { margin-top: 22px; }
+.cover .meta { margin-top: 48px; display: flex; gap: 14px; flex-wrap: wrap; }
+.pill {
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  padding: 8px 16px; border-radius: 999px; font-size: 17px;
+}
+.cover .deco {
+  position: absolute; right: 70px; bottom: 80px; width: 330px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.bubble { padding: 12px 16px; border-radius: 16px; font-size: 16px; line-height: 1.4; max-width: 300px; }
+.bubble.user { align-self: flex-end; background: #2b5278; color: #fff; border-bottom-right-radius: 4px; }
+.bubble.bot { align-self: flex-start; background: var(--card); border: 1px solid var(--line); color: var(--text); border-bottom-left-radius: 4px; }
+.bubble.file { display: flex; align-items: center; gap: 10px; }
+.bubble.file b { color: var(--rose); font-size: 13px; border: 1.5px solid var(--rose); border-radius: 4px; padding: 2px 5px; }
+
+/* Diagrama de arquitectura */
+.arch { position: relative; width: 1120px; height: 500px; margin-top: 6px; }
+.arch svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.node {
+  position: absolute; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px;
+  padding: 10px 14px; text-align: center; width: 200px; height: 88px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.node h3 { font-size: 18px; margin-bottom: 4px; }
+.node p { font-size: 14px; line-height: 1.35; }
+.node.hl-amber { border-color: var(--amber); box-shadow: 0 0 0 4px rgba(245, 185, 66, .12); }
+.node.hl-teal { border-color: var(--teal); }
+.node.hl-sky { border-color: var(--sky); }
+.node.hl-rose { border-color: var(--rose); }
+.zone {
+  position: absolute; border: 1.5px dashed var(--line); border-radius: 18px;
+}
+.zone span {
+  position: absolute; top: -12px; left: 18px; background: var(--bg); padding: 0 10px;
+  font-family: var(--mono); font-size: 14px; color: var(--muted);
+}
+
+/* Tablas de la base */
+.tables { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.tbl { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.tbl header { padding: 9px 14px; font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--bg); }
+.tbl ul { list-style: none; padding: 8px 14px 12px; }
+.tbl li { font-family: var(--mono); font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+.tbl li.pk { color: var(--amber); }
+
+/* Ciclo del agente */
+.loop { display: flex; align-items: stretch; gap: 0; margin-top: 8px; }
+.step {
+  flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px;
+  position: relative;
+}
+.step .num {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--amber); color: var(--bg); font-weight: 800; margin-bottom: 10px;
+}
+.step p { font-size: 16px; }
+.arrow { display: grid; place-items: center; width: 34px; color: var(--muted); font-size: 26px; flex: none; }
+.return {
+  margin: 14px 0 0 auto; width: 74%; border: 2px dashed var(--teal); border-top: none;
+  border-radius: 0 0 18px 18px; height: 34px; position: relative;
+}
+.return span {
+  position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
+  background: var(--bg); padding: 0 12px; color: var(--teal); font-family: var(--mono); font-size: 15px;
+}
+
+/* Recorrido de un mensaje */
+.trace { display: flex; flex-direction: column; gap: 9px; }
+.trace .row {
+  display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px;
+}
+.trace .who { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+.trace .what { font-size: 16.5px; color: var(--text); }
+.trace .what code { font-size: 14px; }
+
+/* Mock del PDF */
+.pdf {
+  background: #fff; color: #222; border-radius: 6px; padding: 26px 28px; font-size: 13px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .45); transform: rotate(-1.2deg);
+}
+.pdf .top { display: flex; justify-content: space-between; align-items: flex-start; }
+.pdf .brand { color: #1f4e79; font-size: 24px; font-weight: 800; }
+.pdf .sub { color: #888; font-size: 11px; margin-top: 2px; }
+.pdf .num { text-align: right; font-size: 12px; line-height: 1.4; }
+.pdf table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
+.pdf th { background: #1f4e79; color: #fff; text-align: left; padding: 6px 8px; }
+.pdf td { padding: 6px 8px; border-bottom: 1px solid #e5e5e5; }
+.pdf td.r, .pdf th.r { text-align: right; }
+.pdf tr:nth-child(even) td { background: #f2f6fa; }
+.pdf .total td { border: none; background: #fff !important; font-weight: 800; font-size: 14px; }
+
+/* Prompts para construir el sistema */
+.prompts { display: grid; grid-template-columns: 1.45fr 1fr; gap: 20px; align-items: stretch; }
+.prompt { background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; }
+.prompt .tag { margin-bottom: 8px; }
+.prompt pre { background: none; border: none; padding: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; color: #cdd8ea; }
+.prompts .col { display: flex; flex-direction: column; gap: 20px; }
+
+/* Crear el bot con BotFather */
+.botfather { display: grid; grid-template-columns: 1.25fr 1fr; gap: 28px; align-items: start; }
+.botfather .trace .row { grid-template-columns: 118px 1fr; padding: 9px 14px; }
+.botfather .trace .what { font-size: 16px; }
+.chat { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
+.chat .head { font-weight: 700; color: var(--text); font-size: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.chat .head span { color: var(--muted); font-weight: 400; font-size: 13px; }
+.chat .bubble { font-size: 14.5px; max-width: 92%; padding: 9px 13px; }
+.chat .bubble code { font-family: var(--mono); font-size: 13px; color: var(--amber); }
+
+/* Chrome de la presentación */
+#progress { position: fixed; left: 0; top: 0; height: 4px; background: var(--amber); transition: width .35s ease; z-index: 5; }
+#counter {
+  position: fixed; right: 18px; bottom: 14px; font-family: var(--mono); font-size: 13px; color: var(--muted);
+  background: rgba(14, 23, 38, .8); padding: 4px 10px; border-radius: 6px; z-index: 5;
+}
+#nav { position: fixed; left: 18px; bottom: 12px; display: flex; gap: 8px; z-index: 5; }
+#nav button {
+  background: rgba(27, 43, 71, .85); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; width: 40px; height: 34px; font-size: 18px; cursor: pointer;
+}
+#nav button:hover { border-color: var(--amber); }
+#help {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); font-size: 13px; color: var(--muted);
+  opacity: .8; z-index: 5; transition: opacity 1s ease; white-space: nowrap;
+}
+.footer-note { margin-top: auto; font-size: 15px; color: var(--muted); }
+@media (max-width: 700px) { #help { display: none; } }
+@media print {
+  body { overflow: visible; background: #fff; }
+  #viewport { position: static; display: block; }
+  #stage { transform: none !important; }
+  .slide { position: relative; opacity: 1; transform: none; page-break-after: always; margin-bottom: 0; }
+  .frag { opacity: 1; transform: none; }
+  #progress, #counter, #nav, #help { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="viewport"><div id="stage">
+
+<!-- 1. Portada -->
+<section class="slide cover">
+  <div class="kicker">Trabajo Final Integrador · UTN · Inteligencia Artificial</div>
+  <h1>Asistente de presupuestos para librería</h1>
+  <p class="lead">Un agente de IA que atiende por <strong>Telegram</strong>, consulta una <strong>base de datos</strong> real y responde con un <strong>presupuesto en PDF</strong>.</p>
+  <div class="meta">
+    <span class="pill">🤖 Claude + tool use</span>
+    <span class="pill">💬 Telegram</span>
+    <span class="pill">🐘 PostgreSQL</span>
+    <span class="pill">📄 ReportLab</span>
+    <span class="pill">🐳 Docker</span>
+  </div>
+  <div class="deco">
+    <div class="bubble user">Necesito 5 cuadernos Rivadavia de 50 hojas y una resma A4</div>
+    <div class="bubble bot">Te armé el presupuesto: 5 × Cuaderno ABC $ 4.850,00 + Resma A4 $ 8.900,00. Total $ 33.150,00. ¿Genero el PDF?</div>
+    <div class="bubble user">Sí, dale</div>
+    <div class="bubble bot file"><b>PDF</b> presupuesto_00001.pdf</div>
+  </div>
+</section>
+
+<!-- 2. Crear el bot -->
+<section class="slide" style="padding-top: 48px">
+  <div class="kicker">Paso 0 · Antes de los prompts</div>
+  <h2 style="margin-bottom: 20px">Crear el bot de Telegram y conseguir las claves</h2>
+  <div class="botfather">
+    <div class="trace">
+      <div class="row frag"><div class="who sky">1 · Telegram</div><div class="what">Buscá <strong>@BotFather</strong> (el bot oficial, con tilde azul) y mandale <code>/newbot</code>.</div></div>
+      <div class="row frag"><div class="who sky">2 · Nombre</div><div class="what">Elegí el nombre visible y un <strong>username</strong> que termine en <code>bot</code> (ej. <code>Iadesk_bot</code>).</div></div>
+      <div class="row frag"><div class="who amber">3 · Token</div><div class="what">BotFather te da el <strong>token</strong>: es la contraseña del bot. No lo compartas ni lo subas a git.</div></div>
+      <div class="row frag"><div class="who">4 · Extras</div><div class="what">Opcional: <code>/setcommands</code> para el menú (start, nuevo, presupuestos) y <code>/setuserpic</code> para el logo.</div></div>
+      <div class="row frag"><div class="who teal">5 · Claude</div><div class="what">En <strong>console.anthropic.com</strong> → API Keys, creá la clave para la IA.</div></div>
+      <div class="row frag"><div class="who rose">6 · .env</div><div class="what">Pegá ambas en el <code>.env</code> y levantá: <code>docker compose --profile bot up -d</code></div></div>
+    </div>
+    <div class="chat">
+      <div class="head">BotFather <span>· bot</span></div>
+      <div class="bubble user">/newbot</div>
+      <div class="bubble bot">Alright, a new bot. How are we going to call it?</div>
+      <div class="bubble user">Librería UTN</div>
+      <div class="bubble bot">Good. Now let's choose a username for your bot. It must end in <code>bot</code>.</div>
+      <div class="bubble user">Iadesk_bot</div>
+      <div class="bubble bot">Done! You will find it at <code>t.me/Iadesk_bot</code>. Use this token to access the HTTP API: <code>123456789:AAF…</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Prompts -->
+<section class="slide" style="padding-top: 48px">
+  <div class="kicker">Hacelo vos</div>
+  <h2 style="margin-bottom: 20px">Este sistema se arma con 3 prompts</h2>
+  <div class="prompts">
+    <div class="prompt">
+      <span class="tag" style="background: var(--amber)">1 · CONSTRUIR</span>
+<pre>Armá un bot de Telegram para una librería escolar de
+Argentina que haga presupuestos con IA.
+Stack: Python, Claude con tool use, PostgreSQL y Docker Compose.
+
+- Base de datos: categorías, artículos (precio y stock),
+  usuarios, presupuestos con ítems e historial de mensajes.
+  Cargá unos 70 artículos de ejemplo.
+- Tools: buscar artículos (tolerante a acentos y errores de
+  tipeo), crear, modificar y listar presupuestos, generar PDF.
+- La IA nunca inventa precios: todo sale de la base.
+- Que recuerde la conversación y datos del cliente.
+- PDF con N°, fecha, validez, ítems, subtotales y total.</pre>
+    </div>
+    <div class="col">
+      <div class="prompt frag">
+        <span class="tag" style="background: var(--teal)">2 · COMPORTAMIENTO</span>
+<pre>Escribí el system prompt: español rioplatense, respuestas cortas y sin Markdown. Que entienda "birome", "plasticola", "fibrón"; que pregunte si el pedido es ambiguo; que muestre un resumen y pida confirmación antes del PDF; y que no dé descuentos ni hable de otros temas.</pre>
+      </div>
+      <div class="prompt frag">
+        <span class="tag" style="background: var(--sky)">3 · PROBAR Y AJUSTAR</span>
+<pre>Levantá todo con Docker y probalo de punta a punta: pedí "5 cuadernos rayados y una resma", modificá el presupuesto y generá el PDF. Corregí lo que falle.</pre>
+      </div>
+    </div>
+  </div>
+  <p class="frag" style="margin-top: 18px; font-size: 20px">
+    Cambiá <span class="amber">"librería"</span> por tu rubro —ferretería, farmacia, repuestos— y el mismo esquema te sirve.
+  </p>
+</section>
+
+<!-- 4. La idea -->
+<section class="slide">
+  <div class="kicker">La idea</div>
+  <h2>De un mensaje en lenguaje natural a un presupuesto formal</h2>
+  <div class="grid g4" style="margin-top: 10px">
+    <div class="card accent-sky frag"><span class="icon">💬</span><h3>1. El cliente escribe</h3><p>Como le escribiría a un empleado: “5 biromes azules y una plasticola”.</p></div>
+    <div class="card accent-amber frag"><span class="icon">🧠</span><h3>2. La IA interpreta</h3><p>Entiende qué artículos y cantidades pide, y si falta información, pregunta.</p></div>
+    <div class="card accent-teal frag"><span class="icon">🔎</span><h3>3. Consulta la base</h3><p>Busca precios y stock reales. Nunca inventa un dato: todo sale del catálogo.</p></div>
+    <div class="card accent-rose frag"><span class="icon">📄</span><h3>4. Entrega el PDF</h3><p>Arma el presupuesto, lo guarda y lo envía por el mismo chat.</p></div>
+  </div>
+  <p class="frag" style="margin-top: 36px; font-size: 24px">
+    La clave: la IA <strong>no responde de memoria</strong>. <span class="amber">Decide qué hacer</span> y usa
+    <span class="teal">herramientas programadas por nosotros</span> para leer y escribir datos reales.
+  </p>
+</section>
+
+<!-- 5. Arquitectura -->
+<section class="slide" style="padding-top: 44px">
+  <div class="kicker">Arquitectura</div>
+  <h2 style="margin-bottom: 4px">Cómo se conectan las piezas</h2>
+  <div class="arch">
+    <div class="zone" style="left: 270px; top: 110px; width: 840px; height: 284px"><span>contenedor: bot</span></div>
+    <svg viewBox="0 0 1120 500" preserveAspectRatio="none">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#9fb0cc"/>
+        </marker>
+      </defs>
+      <g stroke="#9fb0cc" stroke-width="2" fill="none" marker-end="url(#ah)">
+        <path d="M214,174 L292,174" marker-start="url(#ah)"/>
+        <path d="M500,174 L574,174" marker-start="url(#ah)"/>
+        <path d="M678,92 L678,126" marker-start="url(#ah)"/>
+        <path d="M782,174 L862,174" marker-start="url(#ah)"/>
+        <path d="M678,222 L678,258" marker-start="url(#ah)"/>
+        <path d="M966,222 L966,258" marker-start="url(#ah)"/>
+        <path d="M966,354 L966,408" marker-start="url(#ah)"/>
+        <path d="M866,200 L832,200 L832,378 L396,378 L396,354"/>
+        <path d="M396,262 L396,222"/>
+      </g>
+    </svg>
+    <div class="node hl-sky" style="left: 10px; top: 130px"><h3>💬 Telegram</h3><p>El cliente chatea con <code>@Iadesk_bot</code></p></div>
+    <div class="node hl-amber" style="left: 578px; top: 0"><h3>🧠 Claude API</h3><p>Decide qué responder y qué tool usar</p></div>
+    <div class="node" style="left: 296px; top: 130px"><h3>main.py</h3><p>Bot de Telegram: recibe y responde</p></div>
+    <div class="node hl-amber" style="left: 578px; top: 130px"><h3>agent.py</h3><p>Orquesta modelo, tools y memoria</p></div>
+    <div class="node hl-teal" style="left: 866px; top: 130px"><h3>tools.py</h3><p>11 herramientas que la IA invoca</p></div>
+    <div class="node hl-rose" style="left: 296px; top: 262px"><h3>pdf_generator.py</h3><p>Arma el PDF que main.py envía</p></div>
+    <div class="node" style="left: 578px; top: 262px"><h3>memory.py</h3><p>Historial y datos del cliente</p></div>
+    <div class="node" style="left: 866px; top: 262px"><h3>repository.py</h3><p>Consultas SQL a la base</p></div>
+    <div class="node hl-teal" style="left: 866px; top: 412px"><h3>🐘 PostgreSQL</h3><p>contenedor: db</p></div>
+  </div>
+</section>
+
+<!-- 6. Docker -->
+<section class="slide">
+  <div class="kicker">Infraestructura</div>
+  <h2>Docker Compose: todo se levanta con un comando</h2>
+  <div class="grid g2" style="grid-template-columns: 1.05fr 1fr; align-items: start">
+<pre><span class="n">services</span>:
+  <span class="n">db</span>:
+    image: <span class="s">postgres:16-alpine</span>
+    ports: [<span class="s">"5440:5432"</span>]
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/schema.sql:<span class="s">/docker-entrypoint-initdb.d/01_…</span>
+      - ./db/seed.sql:<span class="s">/docker-entrypoint-initdb.d/02_…</span>
+    healthcheck: <span class="c"># pg_isready</span>
+  <span class="n">adminer</span>:  <span class="c"># ver la base en localhost:8080</span>
+  <span class="n">bot</span>:
+    profiles: [<span class="s">"bot"</span>]
+    build: .
+    env_file: .env
+    depends_on:
+      db: { condition: <span class="s">service_healthy</span> }</pre>
+    <div class="grid" style="gap: 14px">
+      <div class="card accent-teal frag"><h3>🐘 db</h3><p>PostgreSQL con el esquema y el catálogo cargados <strong>automáticamente</strong> la primera vez. Los datos persisten en un volumen.</p></div>
+      <div class="card accent-sky frag"><h3>🔍 adminer</h3><p>Interfaz web para inspeccionar tablas durante el desarrollo.</p></div>
+      <div class="card accent-amber frag"><h3>🤖 bot</h3><p>Imagen propia (<code>Dockerfile</code> con Python 3.12). Espera a que la base esté sana antes de arrancar.</p></div>
+      <p class="frag" style="font-size: 18px"><code>docker compose --profile bot up -d</code></p>
+    </div>
+  </div>
+</section>
+
+<!-- 7. Base de datos -->
+<section class="slide">
+  <div class="kicker">Base de datos</div>
+  <h2>El modelo de datos</h2>
+  <div class="tables">
+    <div class="tbl"><header style="background: var(--amber)">articulos</header><ul>
+      <li class="pk">codigo PK</li><li>nombre</li><li>descripcion</li><li>categoria_id → categorias</li><li>marca · unidad</li><li>precio · stock</li><li>activo</li></ul></div>
+    <div class="tbl"><header style="background: var(--sky)">presupuestos</header><ul>
+      <li class="pk">id PK (= N°)</li><li>chat_id → usuarios</li><li>cliente_nombre</li><li>estado</li><li>subtotal · total</li><li>validez_dias</li><li>pdf_path</li></ul></div>
+    <div class="tbl"><header style="background: var(--sky)">presupuesto_items</header><ul>
+      <li class="pk">id PK</li><li>presupuesto_id</li><li>articulo_codigo</li><li>descripcion <span class="amber">(copia)</span></li><li>precio_unitario <span class="amber">(copia)</span></li><li>cantidad</li><li>subtotal (calculado)</li></ul></div>
+    <div class="tbl"><header style="background: var(--rose)">mensajes · memoria_usuario</header><ul>
+      <li class="pk">chat_id</li><li>rol: user / assistant</li><li>contenido JSONB</li><li>—</li><li>clave · valor</li><li>(nombre, colegio…)</li></ul></div>
+  </div>
+  <div class="grid g3" style="margin-top: 22px">
+    <div class="card frag"><h3 class="amber">Precio congelado</h3><p>El ítem copia nombre y precio al presupuestar: si mañana sube el precio, el presupuesto emitido no cambia.</p></div>
+    <div class="card frag"><h3 class="teal">Totales con trigger</h3><p>Un trigger recalcula subtotal y total cada vez que se agrega, cambia o quita un ítem.</p></div>
+    <div class="card frag"><h3 class="sky">Búsqueda tolerante</h3><p>Extensiones <code>unaccent</code> + <code>pg_trgm</code>: “lapiz” encuentra “Lápiz”, “cuadernos” encuentra “Cuaderno”.</p></div>
+  </div>
+</section>
+
+<!-- 8. Métodos de acceso -->
+<section class="slide">
+  <div class="kicker">repository.py</div>
+  <h2>Métodos de acceso a la base de datos</h2>
+<pre><span class="k">def</span> <span class="f">buscar_articulos</span>(texto, categoria=<span class="k">None</span>):
+    <span class="c"># 1° intento: todas las palabras deben coincidir</span>
+    <span class="c"># 2° intento: alcanza con alguna</span>
+    <span class="k">for</span> union <span class="k">in</span> (<span class="s">" AND "</span>, <span class="s">" OR "</span>):
+        sql = <span class="s">f"""SELECT codigo, nombre, precio, stock
+                 FROM v_catalogo
+                WHERE {condiciones}
+                ORDER BY word_similarity(...) DESC"""</span>
+        ...
+
+<span class="k">def</span> <span class="f">obtener_presupuesto</span>(chat_id, presupuesto_id):
+    <span class="c"># siempre filtra por el dueño</span>
+    ... <span class="s">"WHERE id = :p AND chat_id = :c"</span></pre>
+</section>
+
+<!-- 9. Tools -->
+<section class="slide">
+  <div class="kicker">tools.py · Tool use</div>
+  <h2>Las herramientas que la IA puede usar</h2>
+  <div class="grid g2" style="grid-template-columns: 1fr 1.1fr; align-items: start">
+<pre>{
+  <span class="s">"name"</span>: <span class="s">"crear_presupuesto"</span>,
+  <span class="s">"description"</span>: <span class="s">"Crea un presupuesto nuevo
+     y devuelve número, ítems y totales..."</span>,
+  <span class="s">"input_schema"</span>: {
+    <span class="s">"type"</span>: <span class="s">"object"</span>,
+    <span class="s">"properties"</span>: {
+      <span class="s">"items"</span>: [{ <span class="s">"codigo"</span>, <span class="s">"cantidad"</span> }],
+      <span class="s">"cliente_nombre"</span>: <span class="s">"string"</span>
+    },
+    <span class="s">"required"</span>: [<span class="s">"items"</span>]
+  }
+}</pre>
+    <div>
+      <p style="margin-bottom: 14px">A la IA le describimos cada herramienta con un <strong>nombre</strong>, una <strong>descripción</strong> y un <strong>JSON Schema</strong>. Ella decide cuándo usarla; <strong>nuestro código la ejecuta</strong>.</p>
+      <div class="grid g2" style="gap: 8px">
+        <div class="card" style="padding: 12px 14px"><span class="tag">catálogo</span><p class="mono" style="font-size: 14px">buscar_articulos<br>obtener_articulo<br>listar_categorias<br>listar_articulos_categoria</p></div>
+        <div class="card" style="padding: 12px 14px"><span class="tag" style="background: var(--sky)">presupuestos</span><p class="mono" style="font-size: 14px">crear_presupuesto<br>modificar_presupuesto<br>obtener / listar / anular</p></div>
+        <div class="card" style="padding: 12px 14px"><span class="tag" style="background: var(--rose)">salida</span><p class="mono" style="font-size: 14px">generar_pdf_presupuesto</p></div>
+        <div class="card" style="padding: 12px 14px"><span class="tag" style="background: var(--amber)">memoria</span><p class="mono" style="font-size: 14px">recordar_dato_cliente</p></div>
+      </div>
+      <p class="frag" style="margin-top: 14px; font-size: 18px">🔒 El <code>chat_id</code> <strong>no lo elige la IA</strong>: lo agrega el código según quién escribe. Un cliente nunca accede a presupuestos ajenos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10. Ciclo del agente -->
+<section class="slide">
+  <div class="kicker">agent.py</div>
+  <h2>El ciclo del agente</h2>
+  <div class="loop">
+    <div class="step frag"><div class="num">1</div><h3>Contexto</h3><p>Historial reciente + mensaje nuevo con la fecha y los datos recordados.</p></div>
+    <div class="arrow frag">→</div>
+    <div class="step frag"><div class="num">2</div><h3>Llamar a Claude</h3><p>Se envían system prompt, tools y mensajes.</p></div>
+    <div class="arrow frag">→</div>
+    <div class="step frag"><div class="num">3</div><h3>¿Pidió tools?</h3><p><code>stop_reason == "tool_use"</code>: ejecutar cada tool en Python.</p></div>
+    <div class="arrow frag">→</div>
+    <div class="step frag"><div class="num">4</div><h3>Devolver resultados</h3><p>Los resultados vuelven a Claude como <code>tool_result</code>.</p></div>
+    <div class="arrow frag">→</div>
+    <div class="step frag" style="border-color: var(--teal)"><div class="num" style="background: var(--teal)">5</div><h3>Respuesta final</h3><p>Se guarda el turno y se envía texto + PDFs.</p></div>
+  </div>
+  <div class="return frag"><span>se repite mientras la IA pida herramientas (máx. 10 vueltas)</span></div>
+<pre class="frag" style="margin-top: 34px; font-size: 15px"><span class="k">while</span> vueltas &lt; <span class="n">10</span>:
+    response = client.messages.<span class="f">create</span>(model=CLAUDE_MODEL, system=SYSTEM_PROMPT,
+                                      tools=DEFINICIONES, messages=historial + nuevos)
+    <span class="k">if</span> response.stop_reason != <span class="s">"tool_use"</span>: <span class="k">return</span> respuesta_final   <span class="c"># la IA terminó</span>
+    resultados = [<span class="f">ejecutar_tool</span>(b.name, b.input, ctx) <span class="k">for</span> b <span class="k">in</span> tool_uses]  <span class="c"># nuestro código ejecuta</span></pre>
+</section>
+
+<!-- 11. Memory -->
+<section class="slide">
+  <div class="kicker">memory.py</div>
+  <h2>Memory: la IA recuerda</h2>
+  <div class="grid g2">
+    <div class="card accent-sky">
+      <h3>🕑 Corto plazo · la conversación</h3>
+      <ul style="display: grid; gap: 8px; margin-top: 10px">
+        <li>Cada mensaje se guarda en la tabla <code>mensajes</code> como JSONB, <strong>incluidas las llamadas a tools</strong>.</li>
+        <li>En cada consulta se envían los <strong>últimos 40</strong> mensajes; el recorte siempre empieza en un mensaje del usuario, nunca a mitad de una tool.</li>
+        <li>El turno se guarda <strong>completo y de una vez</strong>: si algo falla a mitad de camino, no queda un historial roto.</li>
+        <li><code>/nuevo</code> empieza una conversación limpia.</li>
+      </ul>
+    </div>
+    <div class="card accent-amber">
+      <h3>🗂️ Largo plazo · el cliente</h3>
+      <ul style="display: grid; gap: 8px; margin-top: 10px">
+        <li>Tabla <code>memoria_usuario</code> con pares clave/valor: nombre, colegio, grado, marca preferida.</li>
+        <li>La IA decide qué vale la pena recordar y lo guarda con la tool <code>recordar_dato_cliente</code>.</li>
+        <li>En cada mensaje se le recuerda:</li>
+      </ul>
+<pre style="margin-top: 10px; font-size: 14px; white-space: pre-wrap">[Fecha: 08/10/2026 17:49]
+[Datos recordados del cliente: nombre: Mauricio; colegio: San Martín]
+pasame mi último presupuesto</pre>
+    </div>
+  </div>
+  <p class="frag footer-note" style="margin-top: 18px">💡 La memoria vive en la base de datos, no en el modelo: el modelo no “aprende”, se le vuelve a dar contexto en cada llamada.</p>
+</section>
+
+<!-- 12. Comportamiento -->
+<section class="slide">
+  <div class="kicker">prompts.py · System prompt</div>
+  <h2>Un comportamiento definido</h2>
+  <div class="grid g2" style="grid-template-columns: 1.2fr 1fr; align-items: start">
+    <div class="grid behave" style="gap: 8px">
+      <div class="card frag"><p>🚫 <strong>Nunca inventa</strong> precios, artículos ni stock: todo sale de las tools.</p></div>
+      <div class="card frag"><p>🤔 Si el pedido es <strong>ambiguo</strong>, ofrece 2 o 3 opciones concretas del catálogo.</p></div>
+      <div class="card frag"><p>📦 Si <strong>falta stock</strong>, avisa y propone alternativas.</p></div>
+      <div class="card frag"><p>✅ Muestra un <strong>resumen y pide confirmación</strong> antes de generar el PDF.</p></div>
+      <div class="card frag"><p>🗣️ Entiende <strong>términos coloquiales</strong>: birome, fibrón, plasticola, voligoma.</p></div>
+      <div class="card frag"><p>🎯 Solo temas de la librería. No da descuentos ni confirma ventas.</p></div>
+    </div>
+    <div>
+<pre style="white-space: pre-wrap; font-size: 14px"><span class="c"># fragmento</span>
+Sos el asistente virtual de presupuestos
+de Librería UTN...
+
+- Todos los precios, códigos y stock salen
+  del catálogo, usando las tools. Nunca
+  inventes un artículo, un precio ni un
+  stock.
+- Español rioplatense, amable y breve.
+- Telegram muestra texto plano: no uses
+  Markdown.</pre>
+      <p class="frag" style="font-size: 17px; margin-top: 14px">El prompt es <strong>fijo</strong> (sin fecha ni datos del usuario) para aprovechar el <strong>prompt caching</strong>: la parte repetida de cada consulta sale más barata.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13. PDF -->
+<section class="slide">
+  <div class="kicker">pdf_generator.py</div>
+  <h2>Generación del presupuesto en PDF</h2>
+  <div class="grid g2" style="grid-template-columns: 1fr 1.05fr; gap: 50px; align-items: center">
+    <div>
+      <ul style="display: grid; gap: 12px; padding-left: 22px">
+        <li>Librería <strong>ReportLab</strong>: se arma el documento con bloques (párrafos, tablas, espacios).</li>
+        <li>Lee el presupuesto <strong>desde la base</strong>, no desde lo que dijo la IA: los números siempre coinciden con lo guardado.</li>
+        <li>Número, fecha, validez, cliente, ítems, subtotal y total con formato argentino: <code>$ 33.150,00</code>.</li>
+        <li>Se guarda en <code>output/</code>, se registra en la base (estado <code>enviado</code>) y el bot lo adjunta al chat.</li>
+      </ul>
+    </div>
+    <div class="pdf">
+      <div class="top">
+        <div><div class="brand">Librería UTN</div><div class="sub">Av. Siempre Viva 742 · Buenos Aires</div></div>
+        <div class="num"><b>PRESUPUESTO N° 00001</b><br>Fecha: 08/10/2026<br>Válido hasta: 15/10/2026</div>
+      </div>
+      <div style="margin-top: 14px"><b>Cliente:</b> Mauricio</div>
+      <table>
+        <tr><th>Código</th><th>Descripción</th><th class="r">Cant.</th><th class="r">Subtotal</th></tr>
+        <tr><td>CUA-001</td><td>Cuaderno ABC 50 h. rayado</td><td class="r">5</td><td class="r">$ 24.250,00</td></tr>
+        <tr><td>ESC-001</td><td>Bolígrafo Cristal azul</td><td class="r">3</td><td class="r">$ 1.950,00</td></tr>
+        <tr><td>PAP-001</td><td>Resma A4 75 g 500 h.</td><td class="r">1</td><td class="r">$ 8.900,00</td></tr>
+        <tr class="total"><td></td><td></td><td class="r">TOTAL</td><td class="r">$ 35.100,00</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 14. Telegram -->
+<section class="slide">
+  <div class="kicker">main.py</div>
+  <h2>El bot de Telegram</h2>
+  <div class="grid g3">
+    <div class="card accent-sky"><h3>Conexión</h3><p>Bot creado con <strong>@BotFather</strong>. La librería <code>python-telegram-bot</code> consulta a Telegram si hay mensajes nuevos (<em>long polling</em>): no hace falta servidor público.</p></div>
+    <div class="card accent-amber"><h3>Comandos</h3><ul><li><code>/start</code> saludo y ejemplos</li><li><code>/nuevo</code> conversación nueva</li><li><code>/presupuestos</code> lista los del usuario</li><li>Cualquier texto va al agente</li></ul></div>
+    <div class="card accent-teal"><h3>Detalles</h3><ul><li>Indicador “escribiendo…” mientras piensa</li><li>Un lock por chat: mensajes seguidos se procesan en orden</li><li>Respuestas largas se parten en partes de 4000 caracteres</li><li>Los PDFs se envían como documento</li></ul></div>
+  </div>
+  <div class="card frag" style="margin-top: 20px; border-left: 4px solid var(--rose)">
+    <p>⚠️ <strong>Manejo de errores:</strong> si la API falla (clave inválida, límite de uso, sin conexión) el usuario recibe un mensaje amable y el error completo queda en <code>docker compose logs bot</code>. Así detectamos el <code>401 invalid x-api-key</code> durante la puesta en marcha.</p>
+  </div>
+</section>
+
+<!-- 15. Recorrido -->
+<section class="slide">
+  <div class="kicker">Todo junto</div>
+  <h2 style="margin-bottom: 18px">Recorrido de un mensaje real</h2>
+  <div class="trace">
+    <div class="row frag"><div class="who sky">Cliente</div><div class="what">“necesito 5 cuadernos rivadavia de 50 hojas, 3 biromes azules y una resma”</div></div>
+    <div class="row frag"><div class="who">main.py</div><div class="what">Registra al usuario y llama a <code>agent.responder(chat_id, texto)</code></div></div>
+    <div class="row frag"><div class="who rose">memory.py</div><div class="what">Carga el historial y agrega fecha + datos recordados</div></div>
+    <div class="row frag"><div class="who amber">Claude</div><div class="what">Pide 3 tools en paralelo: <code>buscar_articulos("cuaderno rivadavia 50 hojas")</code>, <code>("birome azul")</code>, <code>("resma")</code></div></div>
+    <div class="row frag"><div class="who teal">tools → db</div><div class="what">Devuelven <code>CUA-001</code>, <code>ESC-001</code>, <code>PAP-001</code> con precio y stock</div></div>
+    <div class="row frag"><div class="who amber">Claude</div><div class="what">Pide <code>crear_presupuesto(items=[…])</code> → la base calcula el total con el trigger</div></div>
+    <div class="row frag"><div class="who amber">Claude</div><div class="what">Responde con el resumen y pregunta: “¿Genero el PDF?”</div></div>
+    <div class="row frag"><div class="who sky">Cliente</div><div class="what">“sí” → <code>generar_pdf_presupuesto(1)</code> → 📄 presupuesto_00001.pdf en el chat</div></div>
+  </div>
+</section>
+
+<!-- 16. Robustez -->
+<section class="slide">
+  <div class="kicker">Decisiones de diseño</div>
+  <h2>Seguridad y robustez</h2>
+  <div class="grid g3">
+    <div class="card accent-teal frag"><span class="icon">🔒</span><h3>Aislamiento por usuario</h3><p>Toda consulta de presupuestos filtra por <code>chat_id</code>, y ese dato lo pone el código, no la IA.</p></div>
+    <div class="card accent-amber frag"><span class="icon">🧾</span><h3>La IA no escribe SQL</h3><p>Solo puede usar las 11 tools. Cada una valida sus datos (código existente, cantidad &gt; 0).</p></div>
+    <div class="card accent-sky frag"><span class="icon">🔁</span><h3>Errores como información</h3><p>Si una tool falla, el error vuelve a la IA (<code>is_error</code>) y ella se lo explica al cliente.</p></div>
+    <div class="card accent-rose frag"><span class="icon">⏱️</span><h3>Límites</h3><p>Máximo 10 vueltas de tools por mensaje. Lista opcional de chats autorizados (<code>TELEGRAM_ALLOWED_CHAT_IDS</code>).</p></div>
+    <div class="card accent-teal frag"><span class="icon">🔑</span><h3>Secretos fuera del código</h3><p>Token de Telegram y API key en <code>.env</code>, nunca en el repositorio.</p></div>
+    <div class="card accent-amber frag"><span class="icon">💸</span><h3>Costo controlado</h3><p>Modelo configurable (<code>CLAUDE_MODEL</code>) y prompt caching del prefijo fijo.</p></div>
+  </div>
+</section>
+
+<!-- 17. Cierre -->
+<section class="slide cover">
+  <div class="kicker">Resumen</div>
+  <h1 style="font-size: 60px">Una IA útil = modelo + herramientas + datos + memoria + reglas claras</h1>
+  <div class="grid g4" style="margin-top: 40px; max-width: 1080px">
+    <div class="card"><h3 class="amber">Hecho</h3><p style="font-size: 16px">Docker, base de datos, 11 tools, memory, PDF, bot de Telegram funcionando.</p></div>
+    <div class="card"><h3 class="teal">Próximo</h3><p style="font-size: 16px">Canal de Instagram usando el mismo agente.</p></div>
+    <div class="card"><h3 class="sky">Próximo</h3><p style="font-size: 16px">Envío del presupuesto por mail.</p></div>
+    <div class="card"><h3 class="rose">Próximo</h3><p style="font-size: 16px">Panel web para administrar catálogo y precios.</p></div>
+  </div>
+  <p style="margin-top: 40px; font-size: 22px">Probalo: <strong class="sky">t.me/Iadesk_bot</strong></p>
+</section>
+
+</div></div>
+
+<div id="nav"><button id="btn-prev" aria-label="Anterior">‹</button><button id="btn-next" aria-label="Siguiente">›</button></div>
+<div id="counter"></div>
+<div id="help">← → o espacio para avanzar · F pantalla completa · Inicio / Fin</div>
+
+<script>
+(() => {
+  const stage = document.getElementById('stage');
+  const slides = [...document.querySelectorAll('.slide')];
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('counter');
+  let current = 0;
+  // Con ?todo en la URL se muestran todos los fragmentos de entrada (para revisar o imprimir)
+  const mostrarTodo = new URLSearchParams(location.search).has('todo');
+  if (mostrarTodo) document.body.classList.add('sin-animacion');
+
+  // Escala el escenario de 1280x720 para que entre en la ventana
+  function fit() {
+    const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = `scale(${s})`;
+  }
+
+  const frags = i => [...slides[i].querySelectorAll('.frag')];
+
+  function show(i, revealAll = false) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, k) => {
+      s.classList.toggle('active', k === current);
+      s.classList.toggle('prev', k < current);
+    });
+    frags(current).forEach(f => f.classList.toggle('shown', revealAll || mostrarTodo));
+    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    counter.textContent = `${current + 1} / ${slides.length}`;
+    history.replaceState(null, '', `#${current + 1}`);
+  }
+
+  function next() {
+    const pending = frags(current).find(f => !f.classList.contains('shown'));
+    if (pending) pending.classList.add('shown');
+    else if (current < slides.length - 1) show(current + 1);
+  }
+
+  function prev() {
+    const shown = frags(current).filter(f => f.classList.contains('shown'));
+    if (shown.length) shown[shown.length - 1].classList.remove('shown');
+    else if (current > 0) show(current - 1, true);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); next(); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1, true);
+    else if (e.key.toLowerCase() === 'f') {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen?.();
+    }
+  });
+
+  document.getElementById('btn-next').addEventListener('click', next);
+  document.getElementById('btn-prev').addEventListener('click', prev);
+
+  // Deslizar en pantallas táctiles
+  let x0 = null;
+  document.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 40) (dx < 0 ? next : prev)();
+    x0 = null;
+  });
+
+  setTimeout(() => { document.getElementById('help').style.opacity = 0; }, 6000);
+  window.addEventListener('resize', fit);
+  fit();
+  const fromHash = parseInt(location.hash.slice(1), 10);
+  show(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+})();
+</script>
+</body>
+</html>

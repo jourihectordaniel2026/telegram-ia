@@ -1,0 +1,104 @@
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:\Users\hecto\OneDrive\Documentos\Telegram-IA> docker compose up -d
+[+] up 22/22
+ ✔ Image adminer              Pulled                                                                                8.1s
+ ✔ Volume telegram-ia_pgdata  Created                                                                               0.0s
+ ✔ Container libreria-adminer Started                                                                               0.5s
+ ✔ Container libreria-db      Started                                                                               0.7s
+PS C:\Users\hecto\OneDrive\Documentos\Telegram-IA> docker compose logs db
+libreria-db  | The files belonging to this database system will be owned by user "postgres".
+libreria-db  | This user must also own the server process.
+libreria-db  |
+libreria-db  | The database cluster will be initialized with locale "en_US.utf8".
+libreria-db  | The default database encoding has accordingly been set to "UTF8".
+libreria-db  | The default text search configuration will be set to "english".
+libreria-db  |
+libreria-db  | Data page checksums are disabled.
+libreria-db  |
+libreria-db  | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+libreria-db  | creating subdirectories ... ok
+libreria-db  | selecting dynamic shared memory implementation ... posix
+libreria-db  | selecting default max_connections ... 100
+libreria-db  | selecting default shared_buffers ... 128MB
+libreria-db  | selecting default time zone ... Etc/UTC
+libreria-db  | creating configuration files ... ok
+libreria-db  | running bootstrap script ... ok
+libreria-db  | performing post-bootstrap initialization ... ok
+libreria-db  | syncing data to disk ... ok
+libreria-db  |
+libreria-db  |
+libreria-db  | Success. You can now start the database server using:
+libreria-db  |
+libreria-db  |     pg_ctl -D /var/lib/postgresql/data -l logfile start
+libreria-db  |
+libreria-db  | initdb: warning: enabling "trust" authentication for local connections
+libreria-db  | initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+libreria-db  | waiting for server to start....2026-10-11 05:14:40.661 UTC [48] LOG:  starting PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+libreria-db  | 2026-10-11 05:14:40.663 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+libreria-db  | 2026-10-11 05:14:40.671 UTC [51] LOG:  database system was shut down at 2026-10-11 05:14:40 UTC
+libreria-db  | 2026-10-11 05:14:40.675 UTC [48] LOG:  database system is ready to accept connections
+libreria-db  |  done
+libreria-db  | server started
+libreria-db  | CREATE DATABASE
+libreria-db  |
+libreria-db  |
+libreria-db  | /usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/1-schema.sql
+libreria-db  | CREATE EXTENSION
+libreria-db  | CREATE EXTENSION
+libreria-db  | CREATE TABLE
+libreria-db  | CREATE TABLE
+libreria-db  | CREATE TABLE
+libreria-db  | CREATE TABLE
+libreria-db  | CREATE TABLE
+libreria-db  | CREATE TABLE
+libreria-db  | CREATE TABLE
+libreria-db  | CREATE FUNCTION
+libreria-db  | CREATE VIEW
+libreria-db  |
+libreria-db  |
+libreria-db  | /usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/2-seed.sql
+libreria-db  | INSERT 0 8
+libreria-db  |  setval
+libreria-db  | --------
+libreria-db  |       8
+libreria-db  | (1 row)
+libreria-db  |
+libreria-db  | INSERT 0 72
+libreria-db  |
+libreria-db  |
+libreria-db  | waiting for server to shut down...2026-10-11 05:14:40.952 UTC [48] LOG:  received fast shutdown request
+libreria-db  | .2026-10-11 05:14:40.953 UTC [48] LOG:  aborting any active transactions
+libreria-db  | 2026-10-11 05:14:40.954 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+libreria-db  | 2026-10-11 05:14:40.954 UTC [49] LOG:  shutting down
+libreria-db  | 2026-10-11 05:14:40.956 UTC [49] LOG:  checkpoint starting: shutdown immediate
+libreria-db  | 2026-10-11 05:14:41.046 UTC [49] LOG:  checkpoint complete: wrote 965 buffers (5.9%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.012 s, sync=0.073 s, total=0.092 s; sync files=336, longest=0.003 s, average=0.001 s; distance=4579 kB, estimate=4579 kB; lsn=0/196B7D8, redo lsn=0/196B7D8
+libreria-db  | 2026-10-11 05:14:41.049 UTC [48] LOG:  database system is shut down
+libreria-db  |  done
+libreria-db  | server stopped
+libreria-db  |
+libreria-db  | PostgreSQL init process complete; ready for start up.
+libreria-db  |
+libreria-db  | 2026-10-11 05:14:41.065 UTC [1] LOG:  starting PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+libreria-db  | 2026-10-11 05:14:41.065 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+libreria-db  | 2026-10-11 05:14:41.065 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+libreria-db  | 2026-10-11 05:14:41.069 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+libreria-db  | 2026-10-11 05:14:41.073 UTC [68] LOG:  database system was shut down at 2026-10-11 05:14:41 UTC
+libreria-db  | 2026-10-11 05:14:41.077 UTC [1] LOG:  database system is ready to accept connections
+PS C:\Users\hecto\OneDrive\Documentos\Telegram-IA> docker compose exec db psql -U libreria -d libreria -c "SELECT count(*) FROM articulos;"
+ count
+-------
+    72
+(1 row)
+
+PS C:\Users\hecto\OneDrive\Documentos\Telegram-IA> docker compose --profile bot up -d
+[+] up 3/3
+ ✔ Container libreria-db      Running                                                                               0.0s
+ ✔ Container libreria-adminer Running                                                                               0.0s
+ ✔ Container libreria-utn-bot Started                                                                               1.8s
+PS C:\Users\hecto\OneDrive\Documentos\Telegram-IA> docker compose logs bot
+libreria-utn-bot  | 2026-10-11 05:19:26,823 bot INFO Proveedor de IA: openrouter | modelo: anthropic/claude-sonnet-5.5
+libreria-utn-bot  | 2026-10-11 05:19:26,843 bot INFO Bot listo. Esperando mensajes (long polling)...
+libreria-utn-bot  | 2026-10-11 05:19:27,823 telegram.ext.Application INFO Application started
+PS C:\Users\hecto\OneDrive\Documentos\Telegram-IA>

@@ -1,0 +1,10 @@
+# Nada de esto entra a la imagen Docker
+.env
+.git
+.freebuff
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.md
+.dockerignore

@@ -1,0 +1,36 @@
+services:
+  bot:
+    # El servicio solo se levanta con: docker compose --profile bot up -d
+    profiles: ["bot"]
+    build: .
+    container_name: libreria-utn-bot
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db       # dentro de la red de Docker el host se llama "db"
+      DB_PORT: "5432"   # y postgres escucha en 5432 (el 5440 es solo afuera)
+    depends_on:
+      - db
+    restart: unless-stopped
+  db:
+    image: postgres:16
+    container_name: libreria-db
+    environment:
+      POSTGRES_USER: libreria
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}   # sale del .env
+      POSTGRES_DB: libreria
+    ports:
+      - "5440:5432"                             # 5440 afuera, como pide la consigna
+    volumes:
+      - pgdata:/var/lib/postgresql/data          # los datos sobreviven a down/up
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql:ro   # el orden lo da el número
+
+  adminer:
+    image: adminer
+    container_name: libreria-adminer
+    ports:
+      - "8080:8080"                             # interfaz web para mirar la base
+
+volumes:
+  pgdata:                                       # declaración obligatoria del volumen global

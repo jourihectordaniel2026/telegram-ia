@@ -15,6 +15,7 @@ services:
   db:
     image: postgres:16
     container_name: libreria-db
+    restart: unless-stopped   # vuelve solo si Docker Desktop se reinicia
     environment:
       POSTGRES_USER: libreria
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}   # sale del .env
@@ -29,6 +30,7 @@ services:
   adminer:
     image: adminer
     container_name: libreria-adminer
+    restart: unless-stopped   # vuelve solo si Docker Desktop se reinicia
     ports:
       - "8080:8080"                             # interfaz web para mirar la base
 

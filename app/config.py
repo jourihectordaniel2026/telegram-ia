@@ -49,3 +49,7 @@ MAX_PASOS = int(os.getenv("MAX_PASOS", "10"))
 # --- Bot de Telegram (Etapa 6) -------------------------------------------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# MAX_TOKENS por defecto bajado a 512 para caber en claves con poco crédito
+# (el error 402 "can only afford 979" pasa con 1024).
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "512"))

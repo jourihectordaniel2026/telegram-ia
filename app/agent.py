@@ -92,13 +92,22 @@ def responder(chat_id: int, texto_usuario: str) -> tuple[str, list[str]]:
                     "en el .env."
                 ) from e
             if e.status_code == 402:
-                # Ojo: 402 no siempre es "sin saldo". Si el cuerpo habla de
-                # in_flight_budget, es un limite TEMPORAL por uso reciente
-                # (lleva Retry-After) y basta con esperar un poco.
-                if "in_flight" in str(e).lower():
+                # 402 puede ser dos cosas distintas:
+                # 1) in_flight_budget_exhausted -> limite TEMPORAL por uso reciente
+                #    (lleva Retry-After); basta esperar un poco.
+                # 2) openrouter_credits / "can only afford" -> limite TOTAL de la clave
+                #    (no hay saldo suficiente para el max_tokens pedido).
+                err_str = str(e).lower()
+                if "in_flight" in err_str:
                     raise ErrorIA(
                         "El proveedor está limitando las consultas por uso "
                         "reciente. Esperá un par de minutos y probá de nuevo."
+                    ) from e
+                if "openrouter_credits" in err_str or "can only afford" in err_str:
+                    raise ErrorIA(
+                        "La clave de OpenRouter no tiene saldo suficiente para "
+                        "esta consulta (max_tokens muy alto para el crédito restante). "
+                        "Cargá créditos en openrouter.ai/credits o bajá MAX_TOKENS."
                     ) from e
                 raise ErrorIA(
                     "OpenRouter no tiene saldo para ese modelo. Cargá créditos "
